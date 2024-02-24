@@ -13,7 +13,7 @@
 
 # The graph table configures how the dependency graph is constructed and thus
 # which crates the checks are performed against
-[graph]
+# [graph]
 # If 1 or more target triples (and optionally, target_features) are specified,
 # only the specified targets will be checked when running `cargo deny check`.
 # This means, if a particular package is only ever used as a target specific
@@ -22,7 +22,7 @@
 # this list would mean the nix crate, as well as any of its exclusive
 # dependencies not shared by any other crates, would be ignored, as the target
 # list here is effectively saying which targets you are building for.
-targets = [
+# targets = [
     # The triple can be any string, but only the target triples built in to
     # rustc (as of 1.40) can be checked against actual config expressions
     #"x86_64-unknown-linux-musl",
@@ -30,7 +30,7 @@ targets = [
     # particular target. target_features are currently not validated against
     # the actual valid features supported by the target architecture.
     #{ triple = "wasm32-unknown-unknown", features = ["atomics"] },
-]
+# ]
 # When creating the dependency graph used as the source of truth when checks are
 # executed, this field can be used to prune crates from the graph, removing them
 # from the view of cargo-deny. This is an extremely heavy hammer, as if a crate
@@ -42,10 +42,10 @@ targets = [
 # If true, metadata will be collected with `--all-features`. Note that this can't
 # be toggled off if true, if you want to conditionally enable `--all-features` it
 # is recommended to pass `--all-features` on the cmd line instead
-all-features = false
+# all-features = false
 # If true, metadata will be collected with `--no-default-features`. The same
 # caveat with `all-features` applies
-no-default-features = false
+# no-default-features = false
 # If set, these feature will be enabled when collecting metadata. If `--features`
 # is specified on the cmd line they will take precedence over this option.
 #features = []
