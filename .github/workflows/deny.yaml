@@ -1,4 +1,4 @@
-name: 'Dependency Audit'
+name: 'Deny'
 on: ['pull_request', 'push']
 
 jobs:
