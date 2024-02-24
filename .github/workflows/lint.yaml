@@ -1,0 +1,14 @@
+name: 'Lint'
+on: ['pull_request', 'push']
+
+jobs:
+  lint:
+    runs-on: 'ubuntu-22.04'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'dtolnay/rust-toolchain@v1'
+        with:
+          toolchain: 'stable'
+          components: 'clippy,fmt'
+      - run: 'cargo clippy -- -D warnings'
+      - run: 'cargo fmt -- --check'
