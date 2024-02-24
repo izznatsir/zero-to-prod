@@ -51,13 +51,13 @@
 #features = []
 
 # The output table provides options for how/if diagnostics are outputted
-[output]
+# [output]
 # When outputting inclusion graphs in diagnostics that include features, this
 # option can be used to specify the depth at which feature edges will be added.
 # This option is included since the graphs can be quite large and the addition
 # of features from the crate(s) to all of the graph roots can be far too verbose.
 # This option can be overridden via `--feature-depth` on the cmd line
-feature-depth = 1
+# feature-depth = 1
 
 # This section is considered when running `cargo deny check advisories`
 # More documentation for the advisories section can be found here:
