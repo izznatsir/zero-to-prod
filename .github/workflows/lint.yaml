@@ -2,6 +2,16 @@ name: 'Lint'
 on: ['pull_request', 'push']
 
 jobs:
+  fmt:
+    runs-on: 'ubuntu-24.04'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - uses: 'dtolnay/rust-toolchain@v1'
+        with:
+          toolchain: 'stable'
+          components: 'rustfmt'
+      - run: 'cargo fmt -- --check'
+
   lint:
     runs-on: 'ubuntu-24.04'
     steps:
@@ -9,6 +19,6 @@ jobs:
       - uses: 'dtolnay/rust-toolchain@v1'
         with:
           toolchain: 'stable'
-          components: 'clippy,rustfmt'
+          components: 'clippy'
+      - uses: 'Swatinem/rust-cache@v2'
       - run: 'cargo clippy -- -D warnings'
-      - run: 'cargo fmt -- --check'
