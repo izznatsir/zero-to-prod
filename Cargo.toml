@@ -15,7 +15,21 @@ name = "ztp"
 
 [dependencies]
 actix-web = "4.8.0"
+config = "0.14.0"
+serde = { version = "1.0.203", features = ["derive"] }
 tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
+
+[depenedencies.sqlx]
+version = "0.7"
+default-features = false
+features = [
+    "chrono",
+    "macros",
+    "migrate",
+    "postgres",
+    "runtime-tokio-rustls",
+    "uuid",
+]
 
 [dev-dependencies]
 reqwest = "0.12.5"
