@@ -2,6 +2,20 @@
 set -x
 set -eo pipefail
 
+if ! [ -x "$(command -v psql)" ]; then
+    echo >&2 "Error: psql is not installed."
+    exit 1
+fi
+
+if ! [ -x "$(command -v sqlx)" ]; then
+    echo >&2 "Error: sqlx is not installed."
+    echo >&2 "Use:"
+    echo >&2 "  cargo install --version='~0.7' sqlx-cli \
+--no-default-features --features rustls,postgres"
+    echo >&2 "to install it."
+    exit 1
+fi
+
 # Check if a custom user has been set, otherwise default to 'postgres'
 DB_USER="${POSTGRES_USER:=postgres}"
 # Check if a custom password has been set, otherwise default to 'password'
@@ -13,15 +27,26 @@ DB_PORT="${POSTGRES_PORT:=5432}"
 # Check if a custom host has been set, otherwise default to 'localhost'
 DB_HOST="${POSTGRES_HOST:=localhost}"
 
-# Launch postgtres using Docker
-docker run \
-    -e POSTGRES_USER=${DB_USER} \
-    -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-    -e POSTGRES_DB=${DB_NAME} \
-    -p "${DB_PORT}:5432" \
-    -d postgres \
-    postgres -N 1000
-    # ^ Increased maximum number of connections for testing purposes
+DOCKER_CONTAINER_NAME="zero_to_prod_postgres"
+
+if ! [ "$(docker ps -a -q -f name=${DOCKER_CONTAINER_NAME})" ]; then
+    if [ "$(docker ps -a -q -f status=exited -f name=${DOCKER_CONTAINER_NAME})" ]; then
+        # Remove inactive container
+        docker rm ${DOCKER_CONTAINER_NAME}
+    fi
+
+    # Launch postgtres using Docker
+    docker run \
+        --name ${DOCKER_CONTAINER_NAME} \
+        -e POSTGRES_USER=${DB_USER} \
+        -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+        -e POSTGRES_DB=${DB_NAME} \
+        -p "${DB_PORT}:5432" \
+        -d postgres \
+        postgres -N 1000
+        # ^ Increased maximum number of connections for testing purposes
+fi
+
 
 # Keep pinging Postgres until it's ready to accept commands
 export PGPASSWORD="${DB_PASSWORD}"
