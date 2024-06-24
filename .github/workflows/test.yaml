@@ -1,13 +1,42 @@
 name: 'Test'
-on: ['pull_request', 'push']
+on:
+  push:
+  pull_request:
+    types: ['opened', 'synchronize', 'reopened']
+
+env:
+  CARGO_TERM_COLOR: 'always'
+  SQLX_VERSION: '0.7'
+  SQLX_FEATURES: 'rustls,postgres'
 
 jobs:
   test:
     runs-on: 'ubuntu-24.04'
+    services:
+      postgres:
+        image: 'postgres:16'
+        env:
+          POSTGRES_USER: 'postgres'
+          POSTGRES_PASSWORD: 'password'
+          POSTGRES_DB: 'newsletter'
+        ports:
+          - '5432:5432'
     steps:
       - uses: 'actions/checkout@v4'
       - uses: 'dtolnay/rust-toolchain@v1'
         with:
           toolchain: 'stable'
       - uses: 'Swatinem/rust-cache@v2'
+        with:
+          key: 'sqlx-${{ env.SQLX_VERSION }}'
+      - name: 'Install sqlx-cli'
+        run: cargo install sqlx-cli
+          --version=${{ env.SQLX_VERSION }}
+          --features ${{ env.SQLX_FEATURES }}
+          --no-default-features
+          --locked
+      - name: 'Install psql'
+        run: sudo apt-get update && sudo apt-get install postgresql-client -y
+      - name: 'Migrate database'
+        run: SKIP_DOCKER=true ./scripts/init_db.sh
       - run: 'cargo test'

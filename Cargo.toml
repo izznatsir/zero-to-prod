@@ -19,7 +19,7 @@ config = "0.14.0"
 serde = { version = "1.0.203", features = ["derive"] }
 tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
 
-[depenedencies.sqlx]
+[dependencies.sqlx]
 version = "0.7"
 default-features = false
 features = [
