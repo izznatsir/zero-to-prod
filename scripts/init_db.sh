@@ -31,12 +31,10 @@ DOCKER_CONTAINER_NAME="zero_to_prod_postgres"
 
 # Allow to skip Docker container creation
 if [ -z "${SKIP_DOCKER}" ]; then
-    if ! [ "$(docker ps -a -q -f name=${DOCKER_CONTAINER_NAME})" ]; then
-        if [ "$(docker ps -a -q -f status=exited -f name=${DOCKER_CONTAINER_NAME})" ]; then
-            # Remove inactive container
-            docker rm ${DOCKER_CONTAINER_NAME}
-        fi
-
+    if [ "$(docker ps -a -q -f status=exited -f name=${DOCKER_CONTAINER_NAME})" ]; then
+        # Restart inactive container
+        docker start ${DOCKER_CONTAINER_NAME}
+    elif [ -z "$(docker ps -a -q -f name=${DOCKER_CONTAINER_NAME})" ]; then
         # Launch postgtres using Docker
         docker run \
             --name ${DOCKER_CONTAINER_NAME} \
