@@ -29,22 +29,25 @@ DB_HOST="${POSTGRES_HOST:=localhost}"
 
 DOCKER_CONTAINER_NAME="zero_to_prod_postgres"
 
-if ! [ "$(docker ps -a -q -f name=${DOCKER_CONTAINER_NAME})" ]; then
-    if [ "$(docker ps -a -q -f status=exited -f name=${DOCKER_CONTAINER_NAME})" ]; then
-        # Remove inactive container
-        docker rm ${DOCKER_CONTAINER_NAME}
-    fi
+# Allow to skip Docker container creation
+if [ -z "${SKIP_DOCKER}" ]; then
+    if ! [ "$(docker ps -a -q -f name=${DOCKER_CONTAINER_NAME})" ]; then
+        if [ "$(docker ps -a -q -f status=exited -f name=${DOCKER_CONTAINER_NAME})" ]; then
+            # Remove inactive container
+            docker rm ${DOCKER_CONTAINER_NAME}
+        fi
 
-    # Launch postgtres using Docker
-    docker run \
-        --name ${DOCKER_CONTAINER_NAME} \
-        -e POSTGRES_USER=${DB_USER} \
-        -e POSTGRES_PASSWORD=${DB_PASSWORD} \
-        -e POSTGRES_DB=${DB_NAME} \
-        -p "${DB_PORT}:5432" \
-        -d postgres \
-        postgres -N 1000
-        # ^ Increased maximum number of connections for testing purposes
+        # Launch postgtres using Docker
+        docker run \
+            --name ${DOCKER_CONTAINER_NAME} \
+            -e POSTGRES_USER=${DB_USER} \
+            -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+            -e POSTGRES_DB=${DB_NAME} \
+            -p "${DB_PORT}:5432" \
+            -d postgres \
+            postgres -N 1000
+            # ^ Increased maximum number of connections for testing purposes
+    fi
 fi
 
 
@@ -62,3 +65,6 @@ DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NA
 export DATABASE_URL
 
 sqlx database create
+sqlx migrate run
+
+>&2 echo "Postgres has been migrated, ready to go!"
