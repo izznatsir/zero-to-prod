@@ -4,6 +4,11 @@ on:
   pull_request:
     types: ['opened', 'synchronize', 'reopened']
 
+env:
+  CARGO_TERM_COLOR: 'always'
+  SQLX_VERSION: '^0.7'
+  SQLX_FEATURES: 'rustls,postgres'
+
 jobs:
   fmt:
     runs-on: 'ubuntu-24.04'
