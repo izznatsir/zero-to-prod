@@ -1,29 +1,67 @@
-use sqlx::{Connection, PgConnection};
-use ztp::configuration::get_configuration;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
+use uuid::Uuid;
+use ztp::configuration::{get_configuration, DatabaseSettings};
 
-fn spawn_app() -> String {
+struct TestApp {
+    address: String,
+    db_pool: PgPool,
+}
+
+async fn spawn_app() -> TestApp {
     let listener =
         std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind TCP socket address.");
-    let socket_address = listener.local_addr().unwrap();
-    let server = ztp::startup::run(listener).expect("Failed to bind address.");
+    let local_address = listener.local_addr().unwrap();
+
+    let mut configuration = get_configuration().expect("Failed to get configuration.");
+    configuration.database.database_name = Uuid::new_v4().to_string();
+    let db_pool = spawn_database(&configuration.database).await;
+
+    let server = ztp::startup::run(listener, db_pool.clone()).expect("Failed to bind address.");
     // Launch the server as a background task.
     // tokio::spawn returns a handle to the spawned future,
     // but we have no use for it here, hence the non-binding let
     let _ = tokio::spawn(server);
-    format!("http://{}", socket_address.to_string())
+
+    TestApp {
+        address: format!("http://{}", local_address),
+        db_pool,
+    }
+}
+
+async fn spawn_database(config: &DatabaseSettings) -> PgPool {
+    // Create database with random name
+    let mut db = PgConnection::connect(&config.connection_string_without_db())
+        .await
+        .expect("Failed to connect to Postgres.");
+
+    db.execute(format!(r#"create database "{}";"#, config.database_name).as_str())
+        .await
+        .expect("Failed to create database.");
+
+    // Migrate database
+    let db_pool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("Failed to connect to Postgres.");
+
+    sqlx::migrate!("./migrations")
+        .run(&db_pool)
+        .await
+        .expect("Failed to migrate the database.");
+
+    db_pool
 }
 
 #[tokio::test]
 async fn health_check_works() {
     // Arrange
-    let app_address = spawn_app();
+    let app = spawn_app().await;
     // We need to bring in `reqwest`
     // to perform HTTP requests agains our application.
     let client = reqwest::Client::new();
 
     // Act
     let response = client
-        .get(format!("{}/health_check", &app_address))
+        .get(format!("{}/health_check", &app.address))
         .send()
         .await
         .expect("Failed to execute request.");
@@ -36,18 +74,13 @@ async fn health_check_works() {
 #[tokio::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
     // Arrange
-    let configuration = get_configuration().expect("Failed to get configuration.");
-    let db_connection_string = configuration.database.connection_string();
-    let mut db_connection = PgConnection::connect(&db_connection_string)
-        .await
-        .expect("Failed to connect to Postgres.");
-    let app_address = spawn_app();
+    let app = spawn_app().await;
     let client = reqwest::Client::new();
 
     // Act
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let response = client
-        .post(&format!("{}/subscriptions", &app_address))
+        .post(&format!("{}/subscriptions", &app.address))
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
@@ -58,7 +91,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
     assert_eq!(200, response.status().as_u16());
 
     let saved = sqlx::query!("select email, name from subscriptions")
-        .fetch_one(&mut db_connection)
+        .fetch_one(&app.db_pool)
         .await
         .expect("Failed to fetch saved subscription.");
 
@@ -69,7 +102,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
 #[tokio::test]
 async fn subscribe_returns_a_400_when_data_is_missing() {
     // Arrange
-    let app_address = spawn_app();
+    let app = spawn_app().await;
     let client = reqwest::Client::new();
     let test_cases = vec![
         ("name=le%20guin", "missing the email"),
@@ -80,7 +113,7 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
     for (invalid_body, error_message) in test_cases {
         // Act
         let response = client
-            .post(&format!("{}/subscriptions", &app_address))
+            .post(&format!("{}/subscriptions", &app.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(invalid_body)
             .send()
