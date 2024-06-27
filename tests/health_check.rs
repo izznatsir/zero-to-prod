@@ -1,6 +1,20 @@
+use once_cell::sync::Lazy;
+use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use ztp::configuration::{get_configuration, DatabaseSettings};
+use ztp::tracing;
+
+// Ensure that the `tracing` stack is only initialised once using `once_cell`
+static TRACING: Lazy<()> = Lazy::new(|| {
+    if std::env::var("TEST_LOG").is_ok() {
+        tracing::init("test", "debug", std::io::stdout)
+            .expect("Failed to initialize tracing subscriber.");
+    } else {
+        tracing::init("test", "debug", std::io::sink)
+            .expect("Failed to initialize tracing subscriber.");
+    };
+});
 
 struct TestApp {
     address: String,
@@ -8,12 +22,16 @@ struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
+    // The firrst time `initialize` is invoked the code in `TRACING` is executed.
+    // All other invocations will instead skip execution.
+    Lazy::force(&TRACING);
+
     let listener =
         std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind TCP socket address.");
     let local_address = listener.local_addr().unwrap();
 
     let mut configuration = get_configuration().expect("Failed to get configuration.");
-    configuration.database.database_name = Uuid::new_v4().to_string();
+    configuration.database.database_name = Uuid::now_v7().to_string();
     let db_pool = spawn_database(&configuration.database).await;
 
     let server = ztp::startup::run(listener, db_pool.clone()).expect("Failed to bind address.");
@@ -30,7 +48,7 @@ async fn spawn_app() -> TestApp {
 
 async fn spawn_database(config: &DatabaseSettings) -> PgPool {
     // Create database with random name
-    let mut db = PgConnection::connect(&config.connection_string_without_db())
+    let mut db = PgConnection::connect(&config.connection_string_without_db().expose_secret())
         .await
         .expect("Failed to connect to Postgres.");
 
@@ -39,7 +57,7 @@ async fn spawn_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to create database.");
 
     // Migrate database
-    let db_pool = PgPool::connect(&config.connection_string())
+    let db_pool = PgPool::connect(&config.connection_string().expose_secret())
         .await
         .expect("Failed to connect to Postgres.");
 
