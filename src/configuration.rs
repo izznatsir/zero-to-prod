@@ -78,6 +78,7 @@ impl TryFrom<String> for Environment {
     }
 }
 
+#[tracing::instrument(name = "Load configuration")]
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let environment: Environment = std::env::var("APP_ENVIRONMENT")
         .unwrap_or("local".into())
@@ -106,5 +107,18 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 
     // Try to convert the configuration values into
     // our Settings type
-    settings.try_deserialize::<Settings>()
+    settings.try_deserialize::<Settings>().map(|config| {
+        tracing::info!(
+            application.host = config.application.host,
+            application.port = config.application.port,
+            database.username = config.database.username,
+            database.host = config.database.host,
+            database.port = config.database.port,
+            database.name = config.database.name,
+            database.require_ssl = config.database.require_ssl,
+            "Successfully load configuration."
+        );
+
+        config
+    })
 }
