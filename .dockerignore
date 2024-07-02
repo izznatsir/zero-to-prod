@@ -2,7 +2,11 @@
 /scripts/local
 /target
 /tests
+.env
+.env.*
 .gitignore
 .prettierignore
+.prettierrc
 deny.toml
+LOCAL.md
 README.md

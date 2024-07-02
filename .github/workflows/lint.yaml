@@ -49,5 +49,5 @@ jobs:
       - name: 'Install psql'
         run: sudo apt-get update && sudo apt-get install postgresql-client -y
       - name: 'Migrate database'
-        run: SKIP_DOCKER=true ./scripts/init_db.sh
+        run: SKIP_DOCKER=true ./scripts/local/init_db.sh
       - run: 'cargo clippy -- -D warnings'
