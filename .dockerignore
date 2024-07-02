@@ -1,0 +1,8 @@
+/.github
+/scripts/local
+/target
+/tests
+.gitignore
+.prettierignore
+deny.toml
+README.md

@@ -1,5 +1,5 @@
 -- Create Subscriptions Table
-create table subscriptions(
+create table if not exists subscriptions(
     id uuid not null,
     primary key (id),
     email text not null unique,

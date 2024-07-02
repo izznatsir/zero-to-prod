@@ -1,5 +1,4 @@
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use ztp::configuration::{get_configuration, DatabaseSettings};
@@ -31,7 +30,7 @@ async fn spawn_app() -> TestApp {
     let local_address = listener.local_addr().unwrap();
 
     let mut configuration = get_configuration().expect("Failed to get configuration.");
-    configuration.database.database_name = Uuid::now_v7().to_string();
+    configuration.database.name = Uuid::now_v7().to_string();
     let db_pool = spawn_database(&configuration.database).await;
 
     let server = ztp::startup::run(listener, db_pool.clone()).expect("Failed to bind address.");
@@ -48,16 +47,16 @@ async fn spawn_app() -> TestApp {
 
 async fn spawn_database(config: &DatabaseSettings) -> PgPool {
     // Create database with random name
-    let mut db = PgConnection::connect(&config.connection_string_without_db().expose_secret())
+    let mut db = PgConnection::connect_with(&config.without_db())
         .await
         .expect("Failed to connect to Postgres.");
 
-    db.execute(format!(r#"create database "{}";"#, config.database_name).as_str())
+    db.execute(format!(r#"create database "{}";"#, config.name).as_str())
         .await
         .expect("Failed to create database.");
 
     // Migrate database
-    let db_pool = PgPool::connect(&config.connection_string().expose_secret())
+    let db_pool = PgPool::connect_with(config.with_db())
         .await
         .expect("Failed to connect to Postgres.");
 
