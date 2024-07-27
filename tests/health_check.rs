@@ -1,11 +1,11 @@
-use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use std::sync::LazyLock;
 use uuid::Uuid;
 use ztp::configuration::{get_configuration, DatabaseSettings};
 use ztp::tracing;
 
 // Ensure that the `tracing` stack is only initialised once using `once_cell`
-static TRACING: Lazy<()> = Lazy::new(|| {
+static TRACING: LazyLock<()> = LazyLock::new(|| {
     if std::env::var("TEST_LOG").is_ok() {
         tracing::init("test", "debug", std::io::stdout)
             .expect("Failed to initialize tracing subscriber.");
@@ -21,9 +21,9 @@ struct TestApp {
 }
 
 async fn spawn_app() -> TestApp {
-    // The firrst time `initialize` is invoked the code in `TRACING` is executed.
+    // The first time `initialize` is invoked the code in `TRACING` is executed.
     // All other invocations will instead skip execution.
-    Lazy::force(&TRACING);
+    LazyLock::force(&TRACING);
 
     let listener =
         std::net::TcpListener::bind("127.0.0.1:0").expect("Failed to bind TCP socket address.");
@@ -125,6 +125,38 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
         ("name=le%20guin", "missing the email"),
         ("email=ursula_le_guin%40gmail.com", "missing the name"),
         ("", "missing both name and email"),
+    ];
+
+    for (invalid_body, error_message) in test_cases {
+        // Act
+        let response = client
+            .post(&format!("{}/subscriptions", &app.address))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(invalid_body)
+            .send()
+            .await
+            .expect("Failed to execute request.");
+
+        // Assert
+        assert_eq!(
+            400,
+            response.status().as_u16(),
+            // Addition customised error message on test failure
+            "The API did not fail with 400 Bad Request when the payload was {}.",
+            error_message
+        );
+    }
+}
+
+#[tokio::test]
+async fn subscribe_returns_a_400_when_fields_are_present_but_invalid() {
+    // Arrange
+    let app = spawn_app().await;
+    let client = reqwest::Client::new();
+    let test_cases = vec![
+        ("name=&email=ursula_le_guin%40gmail.com", "empty name"),
+        ("name=Ursula&email=", "empty email"),
+        ("name=Ursula&email=definitely-not-an-email", "invalid email"),
     ];
 
     for (invalid_body, error_message) in test_cases {
