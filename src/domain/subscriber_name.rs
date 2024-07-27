@@ -16,7 +16,7 @@ impl SubscriberName {
         if is_empty_or_whitespace || is_too_long || contains_forbidden_characters {
             Err(format!("{} is not a valid subscriber name.", name))
         } else {
-            Ok(Self(name.into()))
+            Ok(Self(name))
         }
     }
 }
