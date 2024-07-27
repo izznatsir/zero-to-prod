@@ -3,6 +3,7 @@ name = "ztp"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+rust-version = "1.80.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -26,10 +27,12 @@ tracing-actix-web = "0.7"
 tracing-bunyan-formatter = "0.3"
 tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+unicode-segmentation = "1.11.0"
 uuid = { version = "1.9", features = ["std", "v7"] }
+validator = "0.18.1"
 
 [dependencies.sqlx]
-version = "0.7"
+version = "0.8"
 default-features = false
 features = [
     "chrono",
@@ -41,5 +44,9 @@ features = [
 ]
 
 [dev-dependencies]
+claims = "0.7.1"
+fake = "2.9.2"
 once_cell = "1.19"
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
 reqwest = { version = "0.12", features = ["rustls-tls"] }
